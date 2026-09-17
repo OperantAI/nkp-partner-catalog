@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+data:
+  values.yaml: |
+    # Check the Operant LCP helm chart values.yaml for the default config.
+    # Override values here
+
+kind: ConfigMap
+metadata:
+  name: ${releaseName}-${appVersion}-config-defaults
+  namespace: ${releaseNamespace}
+---

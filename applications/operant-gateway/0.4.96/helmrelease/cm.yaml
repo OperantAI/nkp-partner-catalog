@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+data:
+  values.yaml: |
+    # Operant Gateway uses the gateway config from a Secret created in the namespace.
+    # MCP Config - By default uses a ConfigMap with blank template
+    # Set useConfigSecret: true to use a custom secret instead
+    # kubectl create secret generic operant-gateway --from-file=operant_mcp_gateway.json -n <namespace>
+    # The JSON file should contain:
+    # {
+    #   "gateway": {
+    #     "user_email": "user@example.com",
+    #     "operant_token": "",
+    #     "team_name": "your-team",
+    #     "service_name": "mcp-gateway",
+    #     "gatekeeper_url": ""
+    #   },
+    #   "mcp_servers": [...]
+    # }
+kind: ConfigMap
+metadata:
+  name: ${releaseName}-${appVersion}-config-defaults
+  namespace: ${releaseNamespace}
+---

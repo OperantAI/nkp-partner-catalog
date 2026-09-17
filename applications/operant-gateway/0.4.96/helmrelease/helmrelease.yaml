@@ -1,0 +1,40 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: ${releaseName}-${appVersion}-charts
+  namespace: ${releaseNamespace}
+spec:
+  interval: 24h
+  url: oci://registry.operant.ai/helm/operant-gateway
+  secretRef:
+    name: ${releaseName}-${appVersion}-registry-auth
+  ref:
+    tag: 0.4.96
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: operant-gateway
+  namespace: ${releaseNamespace}
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: ${releaseName}-${appVersion}-charts
+    namespace: ${releaseNamespace}
+  install:
+    crds: CreateReplace
+    createNamespace: true
+    remediation:
+      retries: 30
+  interval: 15s
+  targetNamespace: ${releaseNamespace}
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 30
+  valuesFrom:
+  - kind: ConfigMap
+    name: ${releaseName}-${appVersion}-config-defaults
+---

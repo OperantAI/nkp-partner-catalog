@@ -65,6 +65,8 @@ linters:
               desc: do not use k8s.io/kubernetes directly
     errchkjson:
       check-error-free-encoding: true
+    goconst:
+      ignore-tests: true
     gocritic:
       enabled-tags:
         - diagnostic
