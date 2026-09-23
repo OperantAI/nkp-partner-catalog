@@ -2,6 +2,7 @@ package suites
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,8 +54,8 @@ func createOperantGatewayConfigSecret(name, namespace string) *unstructured.Unst
 				"namespace": namespace,
 			},
 			"type": "Opaque",
-			"stringData": map[string]any{
-				"operant_mcp_gateway.json": gatewayConfigJSON,
+			"data": map[string]any{
+				"operant_mcp_gateway.json": base64.StdEncoding.EncodeToString(gatewayConfigJSON),
 			},
 		},
 	}
@@ -66,13 +67,14 @@ func createOperantGatewayConfigSecret(name, namespace string) *unstructured.Unst
 // catalog.App install path). It reuses the same steps as the operant-lcp suite:
 // the app manifests under applications/operant-lcp/<version>/helmrelease contain
 // the OCI dependency objects (OCIRepository + HelmRelease + values ConfigMap).
-func installingOperantLCP(registryAuthSecretName string) error {
+func installingOperantLCP() error {
 	GinkgoHelper()
 
 	lcp := catalog.NewAppScenario(operantLCPName, *appVersion).(*catalog.App)
 
 	By("creating the operant-lcp registry auth secret for the chart pull")
-	registrySecret := createOperantRegistrySecret(registryAuthSecretName, catalog.DefaultNamespace)
+	registrySecret := createOperantRegistrySecret(registryAuthName,
+		catalog.DefaultNamespace)
 	if err := k8sClient.Create(ctx, registrySecret); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
@@ -188,7 +190,7 @@ var _ = Describe("operant-gateway Tests", Label("operant-gateway"), func() {
 			c = catalog.NewAppScenario("operant-gateway", *appVersion).(*catalog.App)
 
 			By("installing the operant-lcp prerequisite")
-			Expect(installingOperantLCP(operantRegistryAuthSecretName("operant-lcp"))).To(Succeed())
+			Expect(installingOperantLCP()).To(Succeed())
 
 			By("creating the gateway config secret")
 			configSecret := createOperantGatewayConfigSecret(operantGatewayConfigSecretName, catalog.DefaultNamespace)

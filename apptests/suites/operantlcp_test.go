@@ -23,7 +23,7 @@ const (
 	operantRegistryServerEnvVar = "OPERANT_REGISTRY"
 	operantKeyIDEnvVar          = "OPERANT_KEY_ID"
 	operantKeySecretEnvVar      = "OPERANT_KEY_SECRET" //nolint:gosec // not a credential, just an env var name
-	registryAuthSecretSuffix    = "registry-auth"
+	registryAuthName            = "operant-registry-auth"
 	configDefaultsSuffix        = "config-defaults"
 	operantRegistrySecretName   = "operant-registry-creds"
 	operantGatekeeperName       = "Operant_Nutanix"
@@ -32,9 +32,8 @@ const (
 )
 
 // resolverSuffix returns the name a "${releaseName}-<suffix>" resource resolves
-// to in the apptests environment. catalog.App.install substitutes only
-// ${releaseName} and ${releaseNamespace}; ${appVersion} resolves to an empty
-// string (see apptests/catalog/app.go), hence the double dash.
+// to in the apptests environment. Using `--` as separation for the case
+// during testing where the appversion is no resolvable.
 func resolverSuffix(releaseName, suffix string) string {
 	return fmt.Sprintf("%s--%s", releaseName, suffix)
 }
@@ -48,7 +47,9 @@ func getOperantRegistry() string {
 	}
 }
 
-// createOperantRegistrySecret returns a kubernetes.io/dockerconfigjson Secret.
+// createOperantRegistrySecret returns a kubernetes.io/dockerconfigjson Secret operant-registry-auth.
+// That is the default value expected to auth to the registry. If you are performing a more manual installation
+// the secret name can be changed based on the helm specific values.
 func createOperantRegistrySecret(name, namespace string) *unstructured.Unstructured {
 	username := os.Getenv(operantKeyIDEnvVar)
 	password := os.Getenv(operantKeySecretEnvVar)
@@ -67,6 +68,8 @@ func createOperantRegistrySecret(name, namespace string) *unstructured.Unstructu
 		panic(fmt.Sprintf("failed to marshal dockerconfigjson: %v", err))
 	}
 
+	// here we are hardcoding the secret to comply with a default Flux automation pipeline.
+	// The secret name can be updated if you are performing a more manual installation and tuning the values.yaml
 	return &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "v1",
@@ -130,10 +133,6 @@ operantRegistry:
 	return k8sClient.Update(ctx, cm)
 }
 
-func operantRegistryAuthSecretName(releaseName string) string {
-	return resolverSuffix(releaseName, registryAuthSecretSuffix)
-}
-
 func operantCredentialsPresent() bool {
 	return os.Getenv(operantKeyIDEnvVar) != "" && os.Getenv(operantKeySecretEnvVar) != ""
 }
@@ -163,21 +162,11 @@ var _ = Describe("operant-lcp Tests", Label("operant-lcp"), func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		AfterAll(func() {
-			if useExistingCluster || os.Getenv("SKIP_CLUSTER_TEARDOWN") != "" {
-				return
-			}
-
-			err := env.Destroy(ctx)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("should install successfully with default config", func() {
 			c = catalog.NewAppScenario("operant-lcp", *appVersion).(*catalog.App)
 
 			By("creating the registry auth secret for the chart pull")
-			registrySecret := createOperantRegistrySecret(
-				operantRegistryAuthSecretName(c.Name()),
+			registrySecret := createOperantRegistrySecret(registryAuthName,
 				catalog.DefaultNamespace,
 			)
 			err := k8sClient.Create(ctx, registrySecret)
@@ -220,6 +209,9 @@ var _ = Describe("operant-lcp Tests", Label("operant-lcp"), func() {
 				return fmt.Errorf("helm release not ready yet")
 			}).WithPolling(catalog.PollInterval).WithTimeout(10 * time.Minute).Should(Succeed())
 		})
+
+		// We are only deleting the cluster in the AfterAll of the Upgrade check.
+		// Even if there is no upgrade to run the last step would be the destroy of the Kind cluster
 	})
 
 	Describe("Upgrading operant-lcp", Ordered, Label("upgrade"), func() {
@@ -251,18 +243,9 @@ var _ = Describe("operant-lcp Tests", Label("operant-lcp"), func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		AfterAll(func() {
-			if useExistingCluster || os.Getenv("SKIP_CLUSTER_TEARDOWN") != "" {
-				return
-			}
-
-			err := env.Destroy(ctx)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("should install the previous version successfully", func() {
 			registrySecret := createOperantRegistrySecret(
-				operantRegistryAuthSecretName(c.Name()),
+				registryAuthName,
 				catalog.DefaultNamespace,
 			)
 			err := k8sClient.Create(ctx, registrySecret)
@@ -323,6 +306,16 @@ var _ = Describe("operant-lcp Tests", Label("operant-lcp"), func() {
 				}
 				return fmt.Errorf("helm release not ready yet")
 			}).WithPolling(catalog.PollInterval).WithTimeout(10 * time.Minute).Should(Succeed())
+		})
+
+		AfterAll(func() {
+			//
+			if useExistingCluster || os.Getenv("SKIP_CLUSTER_TEARDOWN") != "" {
+				return
+			}
+
+			err := env.Destroy(ctx)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

@@ -7,7 +7,7 @@ spec:
   interval: 24h
   url: oci://registry.operant.ai/helm/operant-gateway
   secretRef:
-    name: ${releaseName}-${appVersion}-registry-auth
+    name: operant-registry-auth
   ref:
     tag: 0.4.96
   layerSelector:

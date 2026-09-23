@@ -17,6 +17,25 @@ data:
     #   },
     #   "mcp_servers": [...]
     # }
+
+    # # Gateway configuration
+    # # These values will automatically populate the ConfigMap when useConfigSecret is false
+    # gateway:
+    #   user_email: "setup@email"
+    #   team_name: "SOC"
+    #   # operant_token: ""  # Can be set here or via env.OPERANT_TOKEN
+    #   service_name: ""
+    #   mcp_servers: []  # Array of MCP server configurations
+
+    # env:
+    #   OPERANT_TOKEN: "XXX" # REQUIRED: User must set Operant API token
+
+    # # Gatekeeper service configuration
+    # # The MCP gateway connects to the Operant Gatekeeper for security scanning
+    # gatekeeper:
+    #   # Full URL to the Operant Gatekeeper service
+    #   url: "http://operant-lcp.${releaseNamespace}.svc:80"
+
 kind: ConfigMap
 metadata:
   name: ${releaseName}-${appVersion}-config-defaults

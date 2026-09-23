@@ -4,9 +4,6 @@ metadata:
   name: ${releaseName}-helmrelease
   namespace: ${releaseNamespace}
 spec:
-  dependsOn:
-    - name: operant-lcp-helmrelease
-      namespace: ${releaseNamespace}
   interval: 6h0m0s
   path: ./helmrelease
   postBuild:
